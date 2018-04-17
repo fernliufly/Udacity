@@ -1,0 +1,316 @@
+Red Wine Quality Exploration by Fern Liu
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# 加载你最终使用的所有组件
+# 在这个代码块的分析中。
+
+# 注意，在这个代码块中，将参数 "echo" 设为假。
+# This prevents the code from displaying in the knitted HTML output.这可以避免代码混入 HTML 输出显示。
+# 应当在文件中，对所有代码块设为 echo=FALSE 。
+
+# 取出下面警告，需要使用 Sys.setlocale('LC_ALL','C')
+#Warning message:
+#In strsplit(code, "\n", fixed = TRUE) :
+# input string 1 is invalid in this locale
+
+Sys.setlocale('LC_ALL','C')
+
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# 加载数据
+# This tidy data set contains 1,599 red wines with 11 variables on the chemical properties of the wine. At least 3 wine experts rated the quality of each wine, providing a rating between 0 (very bad) and 10 (very excellent).
+# Which chemical properties influence the quality of red wines?
+
+RedWineQuality <- read.csv('wineQualityReds.csv')
+```
+
+这个报告探索何种化学属性会影响红酒品质。
+
+# 单变量绘图选择
+```{r echo=FALSE, Univariate_Plots}
+# 数据集维度
+dim(RedWineQuality)
+#View(RedWineQuality)
+str(RedWineQuality)
+summary(RedWineQuality)
+```
+
+红酒品质评级是从0（非常差）到10（非常好）
+
+```{r}
+qplot(data=RedWineQuality, x=quality)
+```
+
+数据集中红酒品质最小值为3，最大值为8，主要集中在5和6.说明这批红酒品质为中等和中等稍微偏上。下面看看其他变量的分布情况。
+```{r}
+qplot(data=RedWineQuality, x=fixed.acidity) + scale_x_continuous(limits = c(4,16), breaks = seq(4,16,1))
+qplot(data=RedWineQuality, x=volatile.acidity) + scale_x_continuous(limits = c(0,1.6), breaks = seq(0,1.6,0.2))
+qplot(data=RedWineQuality, x=citric.acid) + scale_x_continuous(limits=c(0.01,0.85) ,breaks = seq(0.01,0.85,0.05))
+table(RedWineQuality$citric.acid)
+```
+
+
+大多数红酒的fixed acidity固定酸度分布在6到10之间。
+volatile acidity挥发性酸主要分布在0.3到0.7之间，很少是在0.2以下的。这种挥发性酸度值越小红酒的品质越好，挥发性酸度太高容易导致不好的口感。
+少量的citric acid柠檬酸可以为葡萄酒添加“新鲜”和风味。数据集中132条数据的柠檬酸为0。大多数柠檬酸度在0.5以下。
+
+把固定酸度，挥发性酸和柠檬酸相加起来，做为一个新的变量acid，用来判断红酒酸度。下图可见，酸度主要分布在7和10之间。
+
+```{r}
+RedWineQuality$acid <- RedWineQuality$fixed.acidity + RedWineQuality$volatile.acidity + RedWineQuality$citric.acid
+
+ggplot(data=RedWineQuality, aes(x=acid)) + geom_histogram() + scale_x_continuous(limits = c(5,17), breaks = seq(5,17,1))
+
+summary(RedWineQuality$acid)
+```
+
+
+
+```{r}
+qplot(data=RedWineQuality, x=residual.sugar) + scale_x_continuous(limits = c(0,16),breaks=seq(0,16,1))
+table(RedWineQuality$residual.sugar)
+
+qplot(data=RedWineQuality, x=chlorides)+ scale_x_continuous(limits = c(0,0.15), breaks=seq(0,0.15,0.01))
+summary(RedWineQuality$chlorides)
+```
+
+每立方分米含有residual.sugar残糖克数，大多数在3克以下。
+红酒中的chlorides氯化物主要在0.07到0.09克每升之间。平均值为0.079克每升，中位数为0.087克每升。
+
+```{r}
+table(RedWineQuality$free.sulfur.dioxide)
+qplot(data=RedWineQuality, x=free.sulfur.dioxide) + scale_x_continuous(limits = c(1,72))
+
+qplot(data=RedWineQuality, x=total.sulfur.dioxide) + scale_x_continuous(breaks = seq(6,289,20))
+summary(RedWineQuality$total.sulfur.dioxide)
+
+qplot(data=RedWineQuality, x=sulphates)
+
+```
+
+free.sulfur.dioxide游离形式的二氧化硫在分子二氧化硫（作为溶解气体）和亚硫酸氢根离子之间存在平衡;它可以防止微生物的生长和葡萄酒的氧化。
+
+total.sulfur.dioxide总二氧化硫：游离和结合形式的二氧化硫总量;在低浓度下，二氧化硫在葡萄酒中几乎检测不到，但当游离二氧化硫浓度超过50 ppm时，就会影响红酒品质。主要分布在60毫克每升以下。
+
+```{r}
+qplot(data=RedWineQuality, x=density)
+
+summary(RedWineQuality$pH)
+ggplot(data=RedWineQuality, aes(x=pH)) + geom_histogram() + 
+  scale_x_continuous(limits = c(2.5,4), breaks = seq(2.5,4,.25))
+
+qplot(data=RedWineQuality, x=alcohol)
+summary(RedWineQuality$alcohol)
+```
+
+
+pH值描述葡萄酒酸度或碱度是从0（非常酸性）到14（非常基本）的标度;大多数葡萄酒的pH值在3.1-3.5之间。
+
+# 单变量分析
+
+### 你的数据集结构是什么？
+数据集一共有1599个观察值。有11个红酒化学属性：
+酸度："fixed.acidity","volatile.acidity","citric.acid",
+硫化物："sulphates","free.sulfur.dioxide","total.sulfur.dioxide",
+其他化学属性："residual.sugar","chlorides","density","pH","alcohol",
+和一个红酒品质：
+"quality"(score between 0 and 10)
+
+红酒品质级别主要在5和6；
+固定酸度和挥发性酸度，氯化物，pH和密度呈钟形分布；
+残留糖主要分布在1.5和2.5之间；
+硫化物和酒精随x轴增大，count呈递减；
+酒精的中位数书10.2，平均值为10.42，最大值为14.9。
+
+
+### 你的数据集内感兴趣的主要特性有哪些？
+感兴趣红酒的pH值、残留糖和酒精度会怎样影响红酒品质。
+
+### 你认为数据集内哪些其他特征可以帮助你探索兴趣特点？
+数据集中红酒柠檬酸，挥发性酸，pH值，总硫化物，残留糖，硫化物，密度和酒精可以综合起来判断，找出最影响红酒品质的化学属性。
+
+### 根据数据集内已有变量，你是否创建了任何新变量？
+创建了新变量acid，其值为固定酸度，挥发性酸和柠檬酸之和。中位数为8.72克每升，平均值为9.118克每升。
+
+### 在已经探究的特性中，是否存在任何异常分布？你是否对数据进行一些操作，如清洁、调整或改变数据的形式？如果是，你为什么会这样做？
+柠檬酸为0的数据有132条。
+
+```{r}
+summary(RedWineQuality$sulphates)
+table(RedWineQuality$sulphates)
+```
+
+
+
+# 双变量绘图选择
+
+```{r}
+library(ggplot2)
+library(psych)
+
+# cor.plot(RedWineQuality)
+cor.ci(RedWineQuality)
+```
+
+pH和固定酸度呈现正相关。酒精含量和红酒品质也呈现正相关。挥发性酸和红酒品质有负相关关系。
+
+```{r echo=FALSE, Bivariate_Plots}
+ggplot(data=RedWineQuality, aes(x=fixed.acidity, y = quality)) + geom_jitter(alpha=1/2)
+
+ggplot(data=RedWineQuality, aes(x=volatile.acidity, y = quality)) + geom_jitter(alpha=1/2)
+
+ggplot(data=RedWineQuality, aes(x=volatile.acidity, y = quality)) + geom_jitter(alpha=1/2) 
+qplot(data=RedWineQuality ,x=volatile.acidity, y=quality, geom='boxplot')
+
+
+ggplot(data=RedWineQuality, aes(x=quality, y = citric.acid))+ geom_jitter(alpha=1/2) + geom_smooth(method = 'lm', color='red')
+cor.test(RedWineQuality$quality, RedWineQuality$citric.acid)
+
+ggplot(data=RedWineQuality, aes(x=citric.acid, y = fixed.acidity)) + geom_jitter(alpha=1/2) + geom_smooth(method = 'lm', color = 'red')
+
+```
+
+volatile acidity挥发性酸和红酒品质呈现弱负相关关系。
+
+```{r}
+ggplot(data=RedWineQuality, aes(x=free.sulfur.dioxide, y = quality)) + geom_jitter(alpha=1/2) 
+
+cor.test(RedWineQuality$free.sulfur.dioxide, RedWineQuality$quality)
+
+ggplot(data=RedWineQuality, aes(x=total.sulfur.dioxide, y = quality)) + geom_jitter(alpha=1/2) 
+
+cor.test(RedWineQuality$total.sulfur.dioxide, RedWineQuality$quality)
+
+RedWineQuality$bound.sulfur.dioxide <- RedWineQuality$total.sulfur.dioxide - RedWineQuality$free.sulfur.dioxide
+
+ggplot(data=RedWineQuality, aes(x=bound.sulfur.dioxide, y = quality)) + geom_jitter(alpha=1/2) 
+cor.test(RedWineQuality$bound.sulfur.dioxide, RedWineQuality$quality)
+
+ggplot(data=RedWineQuality, aes(x=sulphates, y = quality)) + geom_jitter(alpha=1/2) 
+
+pbound<- qplot(data=RedWineQuality, x=bound.sulfur.dioxide)
+pfree <- qplot(data=RedWineQuality, x=free.sulfur.dioxide)
+
+grid.arrange(pbound, pfree, ncol=1)
+
+qplot(data=RedWineQuality ,x=sulphates, y=quality, geom='boxplot')
+
+cor.test(RedWineQuality$sulphates, RedWineQuality$quality)
+
+```
+
+红酒中含有的稳定二氧化硫比游离二氧化硫多，而且稳定二氧化硫和红酒品质有弱负相关关系。硫酸盐含量和红酒品质呈现弱相关。
+
+```{r}
+names(RedWineQuality)
+ggplot(data=RedWineQuality, aes(x=residual.sugar, y = quality)) + geom_jitter(alpha=1/2) 
+
+cor.test(RedWineQuality$residual.sugar, RedWineQuality$quality)
+
+ggplot(data=RedWineQuality, aes(x=chlorides, y = quality)) + geom_jitter(alpha=1/2) 
+
+cor.test(RedWineQuality$chlorides, RedWineQuality$quality)
+
+
+ggplot(data=RedWineQuality, aes(x=density, y = quality)) + geom_jitter() 
+
+cor.test(RedWineQuality$density, RedWineQuality$quality)
+
+ggplot(data=RedWineQuality, aes(x=pH, y = quality)) + geom_jitter() 
+cor.test(RedWineQuality$pH, RedWineQuality$quality)
+
+
+ggplot(data=RedWineQuality, aes(x=quality, y = alcohol)) + geom_jitter(alpha = 1/2) + geom_smooth(method = 'lm', color='red')
+
+
+cor.test(RedWineQuality$alcohol, RedWineQuality$quality)
+
+by(RedWineQuality$alcohol, RedWineQuality$quality, summary)
+
+```
+
+酒精含量和红酒品质呈现中等正相关关系。
+
+```{r}
+quality_group <- group_by(RedWineQuality, quality)
+
+RedWineQuality.by_quality <- summarise(quality_group,
+                                       alcohol_mean = mean(alcohol),
+                                       alcohol_median = median(alcohol),
+                                       n=n())
+
+head(RedWineQuality.by_quality)
+RedWineQuality.by_quality <- arrange(RedWineQuality.by_quality, quality)
+
+ggplot(data=RedWineQuality.by_quality, aes(x=quality, y=alcohol_mean)) + geom_point() + geom_smooth()
+
+ggplot(data=RedWineQuality.by_quality, aes(x=quality, y=alcohol_median)) + geom_point() + geom_smooth()
+
+```
+
+
+
+# 双变量分析
+
+### 探讨你在这部分探究中观察到的一些关系。这些感兴趣的特性与数据集内其他特性有什么区别？
+红酒酸度和红酒固定酸度有强相关关系。挥发性酸对红酒品质有负面影响，而适量柠檬酸对红酒品质有正面作用。硫酸盐含量对红酒品质有弱正相关关系。
+
+### 你是否观察到主要特性与其他特性之间的有趣关系？
+固定酸度和挥发性酸度没有明显关联，但是固定酸度和柠檬酸却呈现正相关关系。红酒酸度主要由固定酸度决定。红酒中含有的稳定二氧化硫比游离二氧化硫多。
+
+### 你发现最强的关系是什么？
+当红酒品质为中级偏上时，红酒品质越高，含有的酒精量越多。
+
+
+
+# 多变量绘图选择
+
+```{r echo=FALSE, Multivariate_Plots}
+library(ggplot2)
+ggplot(aes(x = acid , y=density), data=subset(RedWineQuality)) + 
+  geom_line(aes(color=quality), stat='summary', fun.y = mean)
+```
+
+# 多变量分析
+
+###  探讨你在这部分探究中观察到的一些关系。通过观察感兴趣的特性，是否存在相互促进的特性？
+
+### 这些特性之间是否存在有趣或惊人的联系呢？
+
+### 选项：你是否创建过数据集的任何模型？讨论你模型的优缺点。
+
+------
+
+# 定稿图与总结
+
+### 绘图一
+```{r echo=FALSE, Plot_One}
+
+```
+
+### 描述一
+
+
+### 绘图二
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### 描述二
+
+
+### 绘图三
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### 描述三
+
+------
+
+# 反思
